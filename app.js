@@ -58,7 +58,7 @@ async function refreshData() {
   const [players, matches, events] = await Promise.all([
     supabase.from('players').select('*').eq('team_id', state.team.id).order('display_name'),
     supabase.from('matches').select('*').eq('team_id', state.team.id).order('starts_at', { ascending: true, nullsFirst: false }),
-    supabase.from('match_events').select('*').eq('team_id', state.team.id).order('created_at', { ascending: false }).limit(100)
+    supabase.from('match_events').select('*').eq('team_id', state.team.id).order('created_at', { ascending: false })
   ]);
   for (const result of [players, matches, events]) if (result.error) return fail(result.error);
   state.players = players.data || []; state.matches = matches.data || []; state.events = events.data || [];
@@ -98,7 +98,7 @@ function renderAll() {
   if (myPlayer) { portfolio.classList.remove('hidden'); portfolio.innerHTML = `<p class="eyebrow">YOUR PORTFOLIO</p><h2>${escapeHtml(myPlayer.display_name)}</h2><p>${escapeHtml(myPlayer.position || 'Player')} · ${playerPoints(myPlayer.id)} points · ${playerEventCount(myPlayer.id)} tagged plays</p>`; }
   else portfolio.classList.add('hidden');
 }
-function renderLive(m) { return `<div class="live-game"><div><small>${escapeHtml(m.competition || 'LIVE GAME')} · ${escapeHtml(m.venue || 'Venue TBD')}</small><div class="score-line"><strong>${escapeHtml(m.home_team)}</strong><b>${scoreFor(m)}</b><strong>${escapeHtml(m.away_team)}</strong></div><small>${escapeHtml(m.period ? `Period ${m.period}` : 'In progress')} ${m.game_clock ? `· ${escapeHtml(m.game_clock)}` : ''}</small></div><button class="button secondary" data-log-match="${m.id}">＋ Log play</button></div>`; }
+function renderLive(m) { const latest = state.events.find(e => e.match_id === m.id); const period = latest?.period ?? m.period; const clock = latest?.game_clock ?? m.game_clock; return `<div class="live-game"><div><small>LIVE GAME · ${escapeHtml(m.venue || 'Venue TBD')}</small><div class="score-line"><strong>${escapeHtml(m.home_team)}</strong><b>${scoreFor(m)}</b><strong>${escapeHtml(m.away_team)}</strong></div><small>${escapeHtml(period ? `Period ${period}` : 'In progress')} ${clock ? `· ${escapeHtml(clock)}` : ''}</small></div><button class="button secondary" data-log-match="${m.id}">＋ Log play</button></div>`; }
 function renderMatch(m) { const status = matchStatus(m); const next = status === 'upcoming' ? 'live' : status === 'live' ? 'completed' : 'upcoming'; const action = status === 'upcoming' ? 'Start' : status === 'live' ? 'Finish' : ''; return `<article class="match-row"><div class="match-status ${escapeHtml(status)}">${escapeHtml(status)}</div><div class="match-main"><div class="match-teams"><strong>${escapeHtml(m.home_team)}</strong><span>vs</span><strong>${escapeHtml(m.away_team)}</strong></div><div class="match-meta">${escapeHtml(dateLabel(m.starts_at))}${m.venue ? ` · ${escapeHtml(m.venue)}` : ''}${m.tags?.length ? ` · ${tags(m.tags)}` : ''}</div></div><div class="match-score">${status === 'upcoming' ? '—' : scoreFor(m)}</div>${action ? `<button class="button small-button" data-status-match="${m.id}" data-next-status="${next}">${action}</button>` : ''}<button class="button small-button" data-log-match="${m.id}">Log play</button></article>`; }
 function playerEventCount(id) { return state.events.filter(e => e.player_id === id).length; }
 function playerPoints(id) { return state.events.filter(e => e.player_id === id).reduce((sum,e) => sum + points(e.event_type), 0); }
